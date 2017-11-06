@@ -90,7 +90,7 @@ cutOutsideShapeByIntersections line (ip:ps) shape = cutOutsideShapeByIntersectio
 cutLineOutsideShape :: Line -> Path -> Maybe Line
 cutLineOutsideShape l@(p1, p2) shape =
   case intersections of
-    [] -> Nothing
+    [] -> if (p1 `isInside` shape && p2 `isInside` shape) then cutOutsideShapeByIntersections l intersections shape else Nothing
     [ip] -> if (p1 `notInside` shape && p2 `notInside` shape) then Nothing else cutOutsideShapeByIntersections l intersections shape
     _ -> cutOutsideShapeByIntersections l intersections shape
   where intersections = lineShapeIntersections l shape
@@ -102,6 +102,8 @@ cutPathOutsideShape (p1:p2:ps) shape =
     Just (p1', p2') -> p1':p2':(cutPathOutsideShape (p2:ps) shape)
     Nothing -> cutPathOutsideShape (p2:ps) shape
   where l' = cutLineOutsideShape (p1, p2) shape
+
+cutPathsInsideShape shape = map (flip cutPathOutsideShape shape)
 
 filledCircle :: Point -> Double -> Double -> Double -> [Path]
 filledCircle (cx, cy) radius precision fc = filter (not . null) $ c:(map (flip cutPathOutsideShape c) filling)

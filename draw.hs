@@ -1,9 +1,12 @@
-{-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric, ImplicitParams #-}
+
+module Draw where
 
 import Shapes
 import Data.Aeson (encode, decode, object, (.=), Object, Value, ToJSON, FromJSON)
 import Data.Aeson.Types (emptyObject)
 import qualified Data.ByteString.Lazy.Char8 as L8
+import qualified Data.ByteString.Internal as BS
 import Network.HTTP.Client
 import Network.HTTP.Client.TLS
 import Network.HTTP.Types.Status (statusCode)
@@ -41,13 +44,14 @@ mmToPercentage :: Point -> Point
 mmToPercentage (x, y) = ((max (min x xWidth) 0)/xWidth*100, (max (min y yWidth) 0)/yWidth*100)
 
 movePenRequest :: Point -> Value
-movePenRequest p = object ["x" .= (x :: Double) , "y" .= (y :: Double)]
+movePenRequest p = object ["x" .= (x :: Double), "y" .= (y :: Double)]
   where (x, y) = mmToPercentage p
 
 setPenStateRequest :: Double -> Value
 setPenStateRequest v = object ["state" .= (v :: Double)]
 
-toDevice method url manager payload = do
+toDevice :: (?manager :: Manager) => BS.ByteString -> String -> Value -> IO (Response L8.ByteString)
+toDevice method url payload = do
   initialRequest <- parseRequest url
   let request = initialRequest
           { method = method
@@ -56,26 +60,34 @@ toDevice method url manager payload = do
               [ ("Content-Type", "application/json; charset=utf-8")
               ]
           }
-  httpLbs request manager
+  httpLbs request ?manager
 
+sendToDevice :: (?manager :: Manager) => String -> Value -> IO (Response L8.ByteString)
 sendToDevice = toDevice "PUT"
 
-getBuffer manager = do toDevice "GET" bufferPath manager emptyObject
+movePen :: (?manager :: Manager) => Point -> IO (Response L8.ByteString)
+movePen point = do sendToDevice penPath (movePenRequest point)
 
-movePen manager point = do sendToDevice penPath manager (movePenRequest point)
-setPenState manager v = do sendToDevice penPath manager (setPenStateRequest v)
-penUp manager = do setPenState manager penUpValue
-penDown manager = do setPenState manager penDownValue
+setPenState :: (?manager :: Manager) => Double -> IO (Response L8.ByteString)
+setPenState v = do sendToDevice penPath (setPenStateRequest v)
 
-drawPath manager [] = do return ()
-drawPath manager (p:ps) = do
-  movePen manager p
-  drawPath manager ps
+penUp :: (?manager :: Manager) => IO (Response L8.ByteString)
+penUp = do setPenState penUpValue
 
-drawPaths manager [] = do return ()
-drawPaths manager (path:paths) = do
-  movePen manager (head path)
-  penDown manager
-  drawPath manager path
-  penUp manager
-  drawPaths manager paths
+penDown :: (?manager :: Manager) => IO (Response L8.ByteString)
+penDown = do setPenState penDownValue
+
+drawPath :: (?manager :: Manager) => Path -> IO (Response L8.ByteString)
+drawPath [] = do penUp
+drawPath (p:ps) = do
+  movePen p
+  drawPath ps
+
+drawPaths :: (?manager :: Manager) => [Path] -> IO (Response L8.ByteString)
+drawPaths [] = do penUp
+drawPaths ((p1:path):paths) = do
+  movePen p1
+  penDown
+  drawPath path
+  penUp
+  drawPaths paths
