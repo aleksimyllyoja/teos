@@ -30,15 +30,31 @@ isInside p ps = round4 (s / twopi) == 1.0
         isInside' p (a:[]) = 0
         isInside' p (a:b:ps) = (isInside' p (b:ps) + subtendedAngle p a b)
 
-notInside p ps = not (isInside p ps)
+notInside p ps = not $ isInside p ps
+
+aSeq = [(-1)**x | x <- [1..]]
+
+lineAngle (x1, y1) (x2, y2) = (atan2 (y1-y2) (x1-x2))+pi
+
+lineLength (x1, y1) (x2, y2) = sqrt $ (y1-y2)**2+(x1-x2)**2
+
+circlePoint (x, y) r a = (x+r*(cos a), y+r*(sin a))
+
+pointByParam s m (x1, y1) (x2, y2) = (x4, y4)
+  where a = lineAngle (x1, y1) (x2, y2)
+        l = lineLength (x1, y1) (x2, y2)
+        (x3, y3) = circlePoint (x1, y1) (s*l) a 
+        (x4, y4) = circlePoint (x3, y3) m (a-pi/2)
+
+controlPointsFromLine p1 p2 vs n = mps
+  where mps = [pointByParam (l/n) v p1 p2 | (l, v) <- zip [1..n-1] vs]
 
 circle :: Point -> Double -> Double -> Path
-circle (cx, cy) radius precision = 
-  repeatFirst [ (x, y) |
-    i <- [0..precision-1],
-    let x = (cos (twopi/precision*i))*radius + cx,
-    let y = (sin (twopi/precision*i))*radius + cy
-  ]
+circle (cx, cy) radius precision = circle' (cx, cy) radius 0 precision
+
+circle' :: Point -> Double -> Double -> Double -> Path
+circle' (cx, cy) radius angle precision =
+  repeatFirst [ circlePoint (cx, cy) radius (twopi/precision*i+angle) | i <- [0..precision-1] ]
 
 bezier :: [Point] -> Double -> Path
 bezier ctrlPoints precision = 
@@ -48,6 +64,8 @@ bezier ctrlPoints precision =
         beta' i 0 t ps = ps !! i
         beta' i n t ps = (beta' i (n-1) t ps)*(1-t)+(beta' (i+1) (n-1) t ps)*t
         (xs, ys) = unzip ctrlPoints
+
+bezier100 ctrlPoints = bezier ctrlPoints 100
 
 closestPointParam :: Line -> Point -> Double
 closestPointParam ((x1, y1), (x2, y2)) (x3, y3)

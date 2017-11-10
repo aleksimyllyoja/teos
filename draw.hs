@@ -13,6 +13,8 @@ import Network.HTTP.Types.Status (statusCode)
 import Control.Concurrent
 import GHC.Generics
 import Data.String.Utils
+import Data.Maybe
+import Control.Monad (liftM)
 
 apiPath = "http://localhost:4242/v1"
 
@@ -27,6 +29,14 @@ yWidthSteps = 8720.0
 
 penUpValue = 0.2
 penDownValue = 1
+
+penDelay = 100*10^4
+
+data Buffer = Buffer {
+    running :: Bool
+  } deriving (Generic, Show)
+
+instance FromJSON Buffer
 
 pathToJson :: Path -> String
 pathToJson = (replace ")" "]") . (replace "(" "[") . show
@@ -62,14 +72,29 @@ toDevice method url payload = do
           }
   httpLbs request ?manager
 
-sendToDevice :: (?manager :: Manager) => String -> Value -> IO (Response L8.ByteString)
-sendToDevice = toDevice "PUT"
+getFromDevice :: (?manager :: Manager) => String -> Value -> IO (Response L8.ByteString)
+getFromDevice = toDevice "GET"
+
+putToDevice :: (?manager :: Manager) => String -> Value -> IO (Response L8.ByteString)
+putToDevice = toDevice "PUT"
 
 movePen :: (?manager :: Manager) => Point -> IO (Response L8.ByteString)
-movePen point = do sendToDevice penPath (movePenRequest point)
+movePen point = do putToDevice penPath (movePenRequest point)
 
 setPenState :: (?manager :: Manager) => Double -> IO (Response L8.ByteString)
-setPenState v = do sendToDevice penPath (setPenStateRequest v)
+setPenState v = do putToDevice penPath (setPenStateRequest v)
+
+isRunning :: (?manager :: Manager) => IO Bool
+isRunning = do
+  a <- getFromDevice bufferPath emptyObject
+  return (fromMaybe False (liftM running (decode (responseBody a) :: Maybe Buffer)))
+
+wait :: (?manager :: Manager) => IO ()
+wait = do
+  r <- isRunning
+  case r of
+    False -> return ()
+    True -> wait
 
 penUp :: (?manager :: Manager) => IO (Response L8.ByteString)
 penUp = do setPenState penUpValue
@@ -87,7 +112,9 @@ drawPaths :: (?manager :: Manager) => [Path] -> IO (Response L8.ByteString)
 drawPaths [] = do penUp
 drawPaths ((p1:path):paths) = do
   movePen p1
+  wait
   penDown
+  threadDelay penDelay
   drawPath path
   penUp
   drawPaths paths
