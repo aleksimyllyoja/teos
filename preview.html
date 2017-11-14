@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>test</title>
+	<style>
+		canvas {
+			border: 1px solid #000;
+			margin: 40px auto;
+			display: block;
+			width: 600px;
+		}
+	</style>
+</head>
+
+<body><canvas id="c" width="600" height="436"></canvas></body>
+
+<script src="preview.js"></script>
+<script>
+	var c = document.getElementById("c");
+	var ctx = c.getContext("2d");
+	
+	for(var i=0; i<DATA.length; i++) {
+		ctx.beginPath();
+		for(var j=0; j<DATA[i].length-1; j++) {
+			ctx.moveTo(DATA[i][j][0]*2, DATA[i][j][1]*2);
+			ctx.lineTo(DATA[i][j+1][0]*2, DATA[i][j+1][1]*2);
+		}
+		ctx.stroke();
+	}
+
+</script>
+
+</html>

@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, ImplicitParams #-}
 
-module Draw where
+module DrawUtils where
 
+import ShapeUtils
 import Shapes
 import Data.Aeson (encode, decode, object, (.=), Object, Value, ToJSON, FromJSON)
 import Data.Aeson.Types (emptyObject)
@@ -24,13 +25,18 @@ bufferPath = apiPath ++ "/buffer/"
 xWidth = 300.0
 yWidth = 218.0
 
+xHalf = xWidth/2
+yHalf = yWidth/2
+
+midPoint = (xHalf, yHalf)
+
 xWidthSteps = 12000.0
 yWidthSteps = 8720.0
 
-penUpValue = 0.2
+penUpValue = 0.0
 penDownValue = 1
 
-penDelay = 100*10^4
+penDelay = 300*10^4
 
 data Buffer = Buffer {
     running :: Bool
@@ -43,12 +49,6 @@ pathToJson = (replace ")" "]") . (replace "(" "[") . show
 
 pathsToJson :: [Path] -> String
 pathsToJson = (join ",") . map pathToJson
-
-mapTuple :: (a -> b) -> (a, a) -> (b, b)
-mapTuple f (a1, a2) = (f a1, f a2)
-
-scale :: Double -> Path -> Path
-scale r ps = map (mapTuple (*r)) ps
 
 mmToPercentage :: Point -> Point
 mmToPercentage (x, y) = ((max (min x xWidth) 0)/xWidth*100, (max (min y yWidth) 0)/yWidth*100)
@@ -108,9 +108,9 @@ drawPath (p:ps) = do
   movePen p
   drawPath ps
 
-drawPaths :: (?manager :: Manager) => [Path] -> IO (Response L8.ByteString)
-drawPaths [] = do penUp
-drawPaths ((p1:path):paths) = do
+drawPaths' :: (?manager :: Manager) => [Path] -> IO (Response L8.ByteString)
+drawPaths' [] = do penUp
+drawPaths' ((p1:path):paths) = do
   movePen p1
   wait
   penDown
@@ -118,3 +118,26 @@ drawPaths ((p1:path):paths) = do
   drawPath path
   penUp
   drawPaths paths
+
+drawPaths :: [Path] -> IO (Response L8.ByteString)
+drawPaths paths = do 
+  manager <- newManager tlsManagerSettings
+  let ?manager = manager
+  
+  movePen (0, 0)
+  penUp
+  putStrLn "Enter pen"
+  getLine
+  
+  drawPaths' paths
+  movePen (0, 0)
+
+dumpJson :: [Path] -> IO ()
+dumpJson paths = do 
+  writeFile "preview.js" ("DATA = ["++str++"];")
+  where str = pathsToJson $ paths
+
+tupleToList = foldr (\(f,s) a -> f:s:a) []
+
+addPaintFetchesToPath paths = tupleToList (zip fs paths)
+  where fs = repeat ((circle100 (20, 20) 19)++(reverse $ circle100 (23, 23) 21))
