@@ -110,6 +110,7 @@ drawPath (p:ps) = do
 
 drawPaths' :: (?manager :: Manager) => [Path] -> IO (Response L8.ByteString)
 drawPaths' [] = do penUp
+drawPaths' ([]:paths) = drawPaths' paths
 drawPaths' ((p1:path):paths) = do
   movePen p1
   wait
@@ -117,7 +118,7 @@ drawPaths' ((p1:path):paths) = do
   threadDelay penDelay
   drawPath path
   penUp
-  drawPaths paths
+  drawPaths' paths
 
 drawPaths :: [Path] -> IO (Response L8.ByteString)
 drawPaths paths = do 
