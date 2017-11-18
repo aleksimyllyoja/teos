@@ -36,7 +36,7 @@ yWidthSteps = 8720.0
 penUpValue = 0.0
 penDownValue = 1
 
-penDelay = 300*10^4
+penDelay = 10*10^4
 
 data Buffer = Buffer {
     running :: Bool

@@ -1,6 +1,7 @@
 module ShapeUtils where
 
 import System.Random
+import Data.List
 
 type Point = (Double, Double)
 type Line = (Point, Point)
@@ -9,10 +10,21 @@ type Path = [Point]
 twopi = 2*pi
 
 (·) :: Point -> Point -> Double
-(·) (x1, y1) (x2, y2) = x1*x2 + y1*y2
+(x1, y1) · (x2, y2) = x1*x2 + y1*y2
+
+(.-.) :: Point -> Point -> Point 
+(x1, y1) .-. (x2, y2) = (x1-x2, y1-y2)
+
+(.+.) :: Point -> Point -> Point 
+(x1, y1) .+. (x2, y2) = (x1+x2, y1+y2)
 
 toPath :: Line -> Path
 toPath (p1, p2) = [p1, p2]
+
+toPaths = map toPath
+
+pathToLines :: Path -> [Line]
+pathToLines path = [l | l <- zip path (tail path)]
 
 round4 :: Double -> Double
 round4 x = fromIntegral (round $ x * 1e4) / 1e4
@@ -43,6 +55,11 @@ lineLength (x1, y1) (x2, y2) = sqrt $ (y1-y2)**2+(x1-x2)**2
 circlePoint :: Point -> Double -> Double -> Point
 circlePoint (x, y) r a = (x+r*(cos a), y+r*(sin a))
 
+pointByParam :: Point -> Point -> Double -> Point
+pointByParam (x1, y1) (x2, y2) s = circlePoint (x1, y1) (s*l) a
+  where a = lineAngle (x1, y1) (x2, y2)
+        l = lineLength (x1, y1) (x2, y2)
+
 controlPointByParam :: Double -> Double -> Point -> Point -> Point
 controlPointByParam s m (x1, y1) (x2, y2) = (x4, y4)
   where a = lineAngle (x1, y1) (x2, y2)
@@ -59,9 +76,9 @@ shorten :: Double -> Point -> Point -> Line
 shorten s p1 p2 = (p1, controlPointByParam s 0 p1 p2)
 
 closestPointParam :: Line -> Point -> Double
-closestPointParam ((x1, y1), (x2, y2)) (x3, y3)
-  = (x3-x1, y3-y1) · (x2-x1, y2-y1) 
-  / (x2-x1, y2-y1) · (x2-x1, y2-y1)
+closestPointParam (p1, p2) p3
+  = (p3 .-. p1) · (p2 .-. p1)
+  / (p2 .-. p1) · (p2 .-. p1)
 
 lineIntersection :: Line -> Line -> Point
 lineIntersection ((x1, y1), (x2, y2)) ((x3, y3), (x4, y4)) = (x, y)
@@ -83,45 +100,30 @@ lineShapeIntersections (p1, p2) (p3:p4:ps)
   | Just ip <- segmentIntersection (p1, p2) (p3, p4) = ip:(lineShapeIntersections (p1, p2) (p4:ps))
   | otherwise = (lineShapeIntersections (p1, p2) (p4:ps))
 
-cutClosestEnd :: Line -> Point -> Line
-cutClosestEnd (p1, p2) p3
-  | closestPointParam (p1, p2) p3 > 0.5 = (p3, p2)
-  | otherwise = (p1, p3)
+cutOutsideShapeByControlPoints :: [Point] -> Path -> [Line]
+cutOutsideShapeByControlPoints [] _ = []
+cutOutsideShapeByControlPoints [p] _ = []
+cutOutsideShapeByControlPoints (p1:p2:ps) shape =
+  case newLine of 
+    Just l -> l:(cutOutsideShapeByControlPoints (p2:ps) shape)
+    Nothing -> cutOutsideShapeByControlPoints (p2:ps) shape
+  where newLine
+          | tp `isInside` shape = Just (p1, p2)
+          | otherwise = Nothing
+        tp = pointByParam p1 p2 0.5
 
-cutOutsideShapeByIntersections :: Line -> [Point] -> Path -> Maybe Line
-cutOutsideShapeByIntersections line [] _ = Just line
-cutOutsideShapeByIntersections line (ip:ps) shape = cutOutsideShapeByIntersections (cutOutsideShape' line ip shape) ps shape
-  where cutOutsideShape' l@(p1, p2) ip shape
-          | p1 `isInside` shape && p2 `notInside` shape = (p1, ip)
-          | p2 `isInside` shape && p1 `notInside` shape = (ip, p2)
-          | otherwise = cutClosestEnd l ip
+cutLineOutsideShape :: Line -> Path -> [Line]
+cutLineOutsideShape line@(p1, p2) shape = cutOutsideShapeByControlPoints controlPoints shape
+  where intersections = lineShapeIntersections line shape
+        controlPoints = p1:(sortBy predicate intersections)++[p2]
+        predicate x y = lineLength p1 x `compare` lineLength p1 y
 
-cutLineOutsideShape :: Line -> Path -> Maybe Line
-cutLineOutsideShape l@(p1, p2) shape =
-  case intersections of
-    [] -> if (p1 `isInside` shape && p2 `isInside` shape) then
-        cutOutsideShapeByIntersections l intersections shape
-      else
-        Nothing
+cutLinesOutsideShape :: [Line] -> Path -> [Line]
+cutLinesOutsideShape lines shape = foldr (++) [] $ map (\l -> cutLineOutsideShape l shape) lines
 
-    [ip] -> if (p1 `notInside` shape && p2 `notInside` shape) then
-        Nothing
-      else
-        cutOutsideShapeByIntersections l intersections shape
-
-    _ -> cutOutsideShapeByIntersections l intersections shape
-
-  where intersections = lineShapeIntersections l shape
-
-cutPathOutsideShape :: Path -> Path -> Path
-cutPathOutsideShape (p1:[]) _ = [] 
-cutPathOutsideShape (p1:p2:ps) shape =
-  case l' of
-    Just (p1', p2') -> p1':p2':(cutPathOutsideShape (p2:ps) shape)
-    Nothing -> cutPathOutsideShape (p2:ps) shape
-  where l' = cutLineOutsideShape (p1, p2) shape
-
-cutPathsOutsideShape shape = map (flip cutPathOutsideShape shape)
+cutPathOutsideShape :: Path -> Path -> [Path]
+cutPathOutsideShape path shape = map toPath $ cutLinesOutsideShape lines shape
+  where lines = pathToLines path
 
 randomVariations 0 _ _ _ = []
 randomVariations chunkCount elementCount magnitude g =
