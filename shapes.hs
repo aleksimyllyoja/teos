@@ -1,5 +1,6 @@
 module Shapes where
 
+import Config
 import ShapeUtils
 import System.Random
 
@@ -69,10 +70,23 @@ bezierVariedPoly center radius magnitude n = do
 
 filledBezierVariedPoly center@(x, y) radius magnitude n = do
   shape <- bezierVariedPoly center radius magnitude n
-  let texture = stripes 0.7 300 (0, 0) (300, 218)
   let cutTexture = toPaths $ cutLinesOutsideShape texture shape
+  return $ cutTexture++[shape]
+  where texture = stripes fillSpacing xWidth (center .-. (tr, tr)) (center .+. (-tr, tr))
+        tr = radius+magnitude
 
-  return (cutTexture++[shape])
+variedPolygon center radius magnitude n = do
+  g <- newStdGen
+  let angles = take n $ (randoms g :: [Double])
+  let angleVariations =  scanl1 (+) $ map (twopi/(sum angles)*) angles
+  return $ circlePointsByAngles center radius angleVariations
+
+filledVariedPolygon center radius magnitude n = do
+  shape <- variedPolygon center radius magnitude n
+  let cutTexture = toPaths $ cutLinesOutsideShape texture shape
+  return $ cutTexture++[shape]
+  where texture = stripes fillSpacing xWidth (center .-. (tr, tr)) (center .+. (-tr, tr))
+        tr = radius+magnitude
 
 pythagorasTree p1 p2 angle 0 = []
 pythagorasTree p1 p2 angle depth = 

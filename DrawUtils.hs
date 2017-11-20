@@ -4,6 +4,8 @@ module DrawUtils where
 
 import ShapeUtils
 import Shapes
+import Config
+
 import Data.Aeson (encode, decode, object, (.=), Object, Value, ToJSON, FromJSON)
 import Data.Aeson.Types (emptyObject)
 import qualified Data.ByteString.Lazy.Char8 as L8
@@ -16,27 +18,6 @@ import GHC.Generics
 import Data.String.Utils
 import Data.Maybe
 import Control.Monad (liftM)
-
-apiPath = "http://localhost:4242/v1"
-
-penPath = apiPath ++ "/pen/"
-bufferPath = apiPath ++ "/buffer/"
-
-xWidth = 300.0
-yWidth = 218.0
-
-xHalf = xWidth/2
-yHalf = yWidth/2
-
-midPoint = (xHalf, yHalf)
-
-xWidthSteps = 12000.0
-yWidthSteps = 8720.0
-
-penUpValue = 0.0
-penDownValue = 1
-
-penDelay = 10*10^4
 
 data Buffer = Buffer {
     running :: Bool
