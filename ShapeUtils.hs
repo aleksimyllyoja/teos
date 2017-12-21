@@ -26,6 +26,11 @@ toPaths = map toPath
 pathToLines :: Path -> [Line]
 pathToLines path = [l | l <- zip path (tail path)]
 
+reverseLine (p1, p2) = (p2, p1)
+
+reverseEveryOther (a:b:t) = a:(reverseLine b):(reverseEveryOther t)
+reverseEveryOther _ = []
+
 round4 :: Double -> Double
 round4 x = fromIntegral (round $ x * 1e4) / 1e4
 

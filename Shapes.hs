@@ -4,6 +4,9 @@ import Config
 import ShapeUtils
 import System.Random
 
+boundingBox :: Path
+boundingBox = [(0, 0), (xWidth, 0), (xWidth, yWidth), (0, yWidth), (0, 0)]
+
 circlePoints :: Point -> Double -> Int -> Path
 circlePoints (cx, cy) radius precision = circlePoints' (cx, cy) radius 0 precision
 
@@ -29,9 +32,9 @@ bezier ctrlPoints precision =
         beta' i n t ps = (beta' i (n-1) t ps)*(1-t)+(beta' (i+1) (n-1) t ps)*t
         (xs, ys) = unzip ctrlPoints
 
-stripes :: Double -> Double -> Point -> Point -> [Line]
+stripes :: Double -> Double -> Point -> Point -> Path
 stripes spacing length p1 p2 = 
-  [(
+  foldr (++) [] $ toPaths $ reverseEveryOther [(
       p1 .+. (0, spacing*i)
     , p1 .+. (length, spacing*i)
     ) | i <- [0..n]
@@ -39,8 +42,10 @@ stripes spacing length p1 p2 =
   where l = lineLength p1 p2
         n = l/spacing
 
+bezier100 :: [Point] -> Path
 bezier100 ctrlPoints = bezier ctrlPoints 100
 
+bezierVariation :: Point -> Point -> [Double] -> Path
 bezierVariation p1 p2 vs = bezier100 $ p1:(controlPointsFromLine p1 p2 vs)++[p2]
 
 bezierVariedCircle center radius magnitude n = do
@@ -70,7 +75,7 @@ bezierVariedPoly center radius magnitude n = do
 
 filledBezierVariedPoly center@(x, y) radius magnitude n = do
   shape <- bezierVariedPoly center radius magnitude n
-  let cutTexture = toPaths $ cutLinesOutsideShape texture shape
+  let cutTexture = cutPathOutsideShape texture shape
   return $ cutTexture++[shape]
   where texture = stripes fillSpacing xWidth (center .-. (tr, tr)) (center .+. (-tr, tr))
         tr = radius+magnitude
@@ -83,7 +88,7 @@ variedPolygon center radius magnitude n = do
 
 filledVariedPolygon center radius magnitude n = do
   shape <- variedPolygon center radius magnitude n
-  let cutTexture = toPaths $ cutLinesOutsideShape texture shape
+  let cutTexture = cutPathOutsideShape texture shape
   return $ cutTexture++[shape]
   where texture = stripes fillSpacing xWidth (center .-. (tr, tr)) (center .+. (-tr, tr))
         tr = radius+magnitude

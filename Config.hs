@@ -22,4 +22,4 @@ penDownValue = 1.0
 penDelay :: Int
 penDelay = 10*10^4
 
-fillSpacing = 0.7
+fillSpacing = 2.0
