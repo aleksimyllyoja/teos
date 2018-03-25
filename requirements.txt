@@ -1,0 +1,5 @@
+random
+aeson
+http-client
+http-client tls
+MissingH
