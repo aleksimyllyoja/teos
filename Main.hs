@@ -6,37 +6,67 @@ import DrawUtils
 import Config
 import System.Random
 
-variationMagnitude = 10
-radius = xStep/3
 
-columns = 2
-rows = 2
+box9 (x, y) w = [
+    (x, y), (x+s, y), (x+2*s, y),
+    (x, y+s), (x+s, y+s), (x+2*s, y+s),
+    (x, y+2*s), (x+s, y+2*s), (x+2*s, y+2*s)
+  ]
+  where s = w/2
 
-xStep = xWidth/(rows+1)
-yStep = yWidth/(columns+1)
+t = box9 (50, 80) 20
+t2 = box9 (60, 80) 20
+t3 = box9 (70, 80) 20
+t4 = box9 (120, 80) 20
 
-fbvp p = filledBezierVariedPoly p radius variationMagnitude 3
-avp p n = filledVariedPolygon p radius variationMagnitude n
+ls = map (\(p1, p2) -> randomBezierVariation p1 p2 140)
 
-box p r = circlePoints' p r (pi/4) 4
-
-filledBox p r = 
-  cutTexture
-  where texture = stripes fillSpacing (tr*2) (p .-. (tr, tr)) (p .+. (-tr, tr))
-        tr = r+10
-        shape = box p r
-        cutTexture = foldr (++) [] $ cutPathOutsideShape texture shape
-
-paths = do
+randomPick l = do
   g <- newStdGen
-  let vs = take 4 $ (randoms g :: [Double])
-  return [filledBox (x*43, y*43) (30+v*30) | ((x, y), v) <- zip ps vs]
-  where ps = [(x, y) | x <- [1..2.0], y <- [1..2.0]]
+  let (r1, g1) = (randomR (0, 8) g :: (Int, StdGen))
+  let (r2, g2) = (randomR (0, 8) g1 :: (Int, StdGen))
+  let (r3, g3) = (randomR (0, 8) g2 :: (Int, StdGen))
+  return [l !! r1]
+
+randomBox b1 b2 b3 b4 = do
+  x1 <- randomPick b1
+  x2 <- randomPick b2
+  x3 <- randomPick b3
+  x4 <- randomPick b4
+
+  let xs = x1++x2++x3++x4
+  let l = zip xs (tail xs)
+  sequence (ls l)
+
+arrow p a l = [
+    (circlePoint p l (a+a'),  p),
+    (p, circlePoint p l (a-a'))
+  ]
+  where a' = (pi/10)
+
+lqt :: Point -> Double -> Path
+lqt p@(x, y) l = [
+    (x-2, y), (x+2, y+l)
+  ]
+
+rqt :: Point -> Double -> Path
+rqt p@(x, y) l = [
+    (x, y), (x-2, y+l)
+  ]
 
 main = do
-  let lines = stripes 2.0 100 midPoint (midPoint .+. (100, 100))
-  paths' <- paths
-  let ps = (foldr (++) [] paths')
-  dumpJson paths'
-  drawPaths paths'
-  -- drawPaths paths
+  path <- randomBox t t2 t3 t4
+
+  let (p1, p2) = last $ pathToLines (last path)
+  let a = toPaths $ arrow p2 (lineAngle p1 p2 - pi) 10
+
+  let lq1 = lqt (30, 80) 5
+  let lq2 = lqt (33, 80) 5
+
+  let rq1 = rqt (140, 80) 5
+  let rq2 = rqt (143, 80) 5
+
+  let paths = [joinPaths (path++a), lq1, lq2, rq1, rq2]
+
+  dumpJson paths
+  drawPaths paths

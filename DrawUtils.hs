@@ -32,7 +32,7 @@ pathsToJson :: [Path] -> String
 pathsToJson = (join ",") . map pathToJson
 
 mmToPercentage :: Point -> Point
-mmToPercentage (x, y) = ((max (min x xWidth) 0)/xWidth*100, (max (min y yWidth) 0)/yWidth*100)
+mmToPercentage (x, y) = ((max (min x width) 0)/width*100, (max (min y height) 0)/height*100)
 
 movePenRequest :: Point -> Value
 movePenRequest p = object ["x" .= (x :: Double), "y" .= (y :: Double)]
@@ -102,20 +102,20 @@ drawPaths' ((p1:path):paths) = do
   drawPaths' paths
 
 drawPaths :: [Path] -> IO (Response L8.ByteString)
-drawPaths paths = do 
+drawPaths paths = do
   manager <- newManager tlsManagerSettings
   let ?manager = manager
-  
+
   movePen (0, 0)
   penUp
   putStrLn "Enter pen"
   getLine
-  
+
   drawPaths' paths
   movePen (0, 0)
 
 dumpJson :: [Path] -> IO ()
-dumpJson paths = do 
+dumpJson paths = do
   writeFile "preview.js" ("DATA = ["++str++"];")
   where str = pathsToJson $ paths
 

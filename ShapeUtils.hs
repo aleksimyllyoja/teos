@@ -12,10 +12,10 @@ twopi = 2*pi
 (·) :: Point -> Point -> Double
 (x1, y1) · (x2, y2) = x1*x2 + y1*y2
 
-(.-.) :: Point -> Point -> Point 
+(.-.) :: Point -> Point -> Point
 (x1, y1) .-. (x2, y2) = (x1-x2, y1-y2)
 
-(.+.) :: Point -> Point -> Point 
+(.+.) :: Point -> Point -> Point
 (x1, y1) .+. (x2, y2) = (x1+x2, y1+y2)
 
 toPath :: Line -> Path
@@ -31,14 +31,16 @@ reverseLine (p1, p2) = (p2, p1)
 reverseEveryOther (a:b:t) = a:(reverseLine b):(reverseEveryOther t)
 reverseEveryOther _ = []
 
+joinPaths paths = foldr (++) [] paths
+
 round4 :: Double -> Double
 round4 x = fromIntegral (round $ x * 1e4) / 1e4
 
 repeatFirst :: [t] -> [t]
-repeatFirst a@(x:_) = a ++ [x] 
+repeatFirst a@(x:_) = a ++ [x]
 
 subtendedAngle :: Point -> Point -> Point -> Double
-subtendedAngle (x1, y1) (x2, y2) (x3, y3) = 
+subtendedAngle (x1, y1) (x2, y2) (x3, y3) =
   atan2 a b
   where a = (x1-x2)*(y1-y3) - (y1-y2)*(x1-x3)
         b = (x1-x2)*(x1-x3) + (y1-y2)*(y1-y3)
@@ -69,7 +71,7 @@ controlPointByParam :: Double -> Double -> Point -> Point -> Point
 controlPointByParam s m (x1, y1) (x2, y2) = (x4, y4)
   where a = lineAngle (x1, y1) (x2, y2)
         l = lineLength (x1, y1) (x2, y2)
-        (x3, y3) = circlePoint (x1, y1) (s*l) a 
+        (x3, y3) = circlePoint (x1, y1) (s*l) a
         (x4, y4) = circlePoint (x3, y3) m (a-pi/2)
 
 controlPointsFromLine :: Point -> Point -> [Double] -> [Point]
@@ -109,7 +111,7 @@ cutOutsideShapeByControlPoints :: [Point] -> Path -> [Line]
 cutOutsideShapeByControlPoints [] _ = []
 cutOutsideShapeByControlPoints [p] _ = []
 cutOutsideShapeByControlPoints (p1:p2:ps) shape =
-  case newLine of 
+  case newLine of
     Just l -> l:(cutOutsideShapeByControlPoints (p2:ps) shape)
     Nothing -> cutOutsideShapeByControlPoints (p2:ps) shape
   where newLine
