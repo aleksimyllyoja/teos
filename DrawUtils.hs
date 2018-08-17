@@ -107,10 +107,6 @@ drawPaths paths = do
   let ?manager = manager
 
   movePen (0, 0)
-  penUp
-  putStrLn "Enter pen"
-  getLine
-
   drawPaths' paths
   movePen (0, 0)
 
