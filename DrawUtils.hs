@@ -1,9 +1,6 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, ImplicitParams #-}
 
 module DrawUtils where
-
-import ShapeUtils
-import Shapes
 import Config
 
 import Data.Aeson (encode, decode, object, (.=), Object, Value, ToJSON, FromJSON)
@@ -24,6 +21,10 @@ data Buffer = Buffer {
   } deriving (Generic, Show)
 
 instance FromJSON Buffer
+
+type Point = (Double, Double)
+type Line = (Point, Point)
+type Path = [Point]
 
 pathToJson :: Path -> String
 pathToJson = (replace ")" "]") . (replace "(" "[") . show
@@ -114,8 +115,3 @@ dumpJson :: [Path] -> IO ()
 dumpJson paths = do
   writeFile "preview.js" ("DATA = ["++str++"];")
   where str = pathsToJson $ paths
-
-tupleToList = foldr (\(f,s) a -> f:s:a) []
-
-addPaintFetchesToPath paths = tupleToList (zip fs paths)
-  where fs = repeat ((circle100 (20, 20) 19)++(reverse $ circle100 (23, 23) 21))

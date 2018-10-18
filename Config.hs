@@ -1,6 +1,6 @@
 module Config where
 
-apiPath = "http://localhost:4242/v1"
+apiPath = "http://192.168.1.105:4242/v1"
 
 penPath = apiPath ++ "/pen/"
 bufferPath = apiPath ++ "/buffer/"
